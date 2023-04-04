@@ -23,15 +23,16 @@
 import 'dart:async';
 import 'dart:math';
 
+import 'package:back_button_interceptor/back_button_interceptor.dart';
 import 'package:flutter/material.dart';
 
-import './widgets/container.dart';
-import './widgets/progress.dart';
-import './widgets/indicator.dart';
-import './widgets/overlay_entry.dart';
-import './widgets/loading.dart';
 import './animations/animation.dart';
 import './theme.dart';
+import './widgets/container.dart';
+import './widgets/indicator.dart';
+import './widgets/loading.dart';
+import './widgets/overlay_entry.dart';
+import './widgets/progress.dart';
 
 /// loading style
 enum EasyLoadingStyle {
@@ -253,6 +254,13 @@ class EasyLoading {
     bool? dismissOnTap,
   }) {
     Widget w = indicator ?? (_instance.indicatorWidget ?? LoadingIndicator());
+
+    final isIgnoringBackButton = !EasyLoadingTheme.ignoring(maskType);
+
+    if (isIgnoringBackButton) {
+      BackButtonInterceptor.add(_backButtonInterceptor);
+    }
+
     return _instance._show(
       status: status,
       maskType: maskType,
@@ -287,6 +295,12 @@ class EasyLoading {
         key: _progressKey,
         value: value,
       );
+      final isIgnoringBackButton = !EasyLoadingTheme.ignoring(maskType);
+
+      if (isIgnoringBackButton) {
+        BackButtonInterceptor.add(_backButtonInterceptor);
+      }
+
       _instance._show(
         status: status,
         maskType: maskType,
@@ -390,7 +404,15 @@ class EasyLoading {
   }) {
     // cancel timer
     _instance._cancelTimer();
-    return _instance._dismiss(animation);
+    return _instance._dismiss(animation).whenComplete(
+      () {
+        final isIgnoringBackButton = !EasyLoadingTheme.ignoring(null);
+
+        if (!isIgnoringBackButton) return;
+
+        BackButtonInterceptor.remove(_backButtonInterceptor);
+      },
+    );
   }
 
   /// add loading status callback
@@ -520,4 +542,10 @@ class EasyLoading {
     _timer?.cancel();
     _timer = null;
   }
+
+  static bool _backButtonInterceptor(
+    bool stopDefaultButtonEvent,
+    RouteInfo routeInfo,
+  ) =>
+      true;
 }
